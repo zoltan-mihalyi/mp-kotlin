@@ -1,0 +1,30 @@
+buildscript {
+    ext.kotlin_version = '1.2.41'
+    ext.serialization_version = '0.5.0'
+
+    repositories {
+        mavenCentral()
+        maven { url "https://kotlin.bintray.com/kotlinx" }
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.jetbrains.kotlinx:kotlinx-gradle-serialization-plugin:$serialization_version"
+    }
+}
+apply plugin: 'kotlin-platform-js'
+apply plugin: 'kotlinx-serialization'
+
+repositories {
+    mavenCentral()
+    maven { url "https://kotlin.bintray.com/kotlinx" }
+}
+
+dependencies {
+    compile "org.jetbrains.kotlin:kotlin-stdlib-js:$kotlin_version"
+    compile "org.jetbrains.kotlinx:kotlinx-serialization-runtime-js:$serialization_version"
+
+    compile project(":mp-js")
+
+    expectedBy project(":mp-serialization-common")
+    testCompile "org.jetbrains.kotlin:kotlin-test-js:$kotlin_version"
+}

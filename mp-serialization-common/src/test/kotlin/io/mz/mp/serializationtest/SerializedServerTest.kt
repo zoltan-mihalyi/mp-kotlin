@@ -1,23 +1,30 @@
-package io.mz.mptest
+package io.mz.mp.serializationtest
 
 import io.mz.mp.*
+import io.mz.mp.serialization.DecoderServer
+import io.mz.mp.serialization.EncoderServer
+import io.mz.mp.serialization.JSON
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class ServerTest {
+
+class SerializedServerTest {
+
     @Test
-    fun testEcho() {
-        val server: Server = EchoServer()
+    fun test1() {
+        val server = EchoServer()
+
+        val serializedServer = EncoderServer(server, { JSON.stringify(it) }, { JSON.parse(it) });
+
+        val deserializedServer = DecoderServer(serializedServer, { JSON.stringify(it) }, { JSON.parse(it) });
 
         var received: MessageToClient? = null
 
-        val channelToClient = object : ChannelToClient {
+        deserializedServer.connect(object : ChannelToClient {
             override fun messageToClient(message: MessageToClient) {
                 received = message
             }
-        }
-
-        server.connect(channelToClient) { channelToServer ->
+        }) { channelToServer ->
             channelToServer.messageToServer(MessageToServer("TEST"))
         }
 

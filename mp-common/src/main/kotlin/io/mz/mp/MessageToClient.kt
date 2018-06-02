@@ -1,3 +1,3 @@
 package io.mz.mp
 
-data class MessageToClient(private val message: String)
+data class MessageToClient(val message: String)
