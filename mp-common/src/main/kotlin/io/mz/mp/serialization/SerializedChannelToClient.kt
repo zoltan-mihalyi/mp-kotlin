@@ -1,5 +1,6 @@
 package io.mz.mp.serialization
 
 interface SerializedChannelToClient {
-    fun messageToClient(message:String)
+    fun connected(channelToServer: SerializedChannelToServer)
+    fun actionToClient(serializedAction: String)
 }

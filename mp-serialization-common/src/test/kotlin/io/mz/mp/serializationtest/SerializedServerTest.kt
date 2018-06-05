@@ -1,43 +1,50 @@
 package io.mz.mp.serializationtest
 
 import io.mz.mp.*
-import io.mz.mp.serialization.DecoderServer
-import io.mz.mp.serialization.EncoderServer
-import io.mz.mp.serialization.JSON
+import io.mz.mp.serialization.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 
 class SerializedServerTest {
 
     @Test
-    fun test1() {
+    fun testSerializedEcho() {
         val server = EchoServer()
 
-        val serializedServer = EncoderServer(server, { JSON.stringify(it) }, { JSON.parse(it) });
+        val serializedServer = EncoderServer(server, JSON::stringify, JSON::parse)
 
-        val deserializedServer = DecoderServer(serializedServer, { JSON.stringify(it) }, { JSON.parse(it) });
+        val deserializedServer = DecoderServer(serializedServer, JSON::stringify, JSON::parse)
 
         var received: MessageToClient? = null
+        var receivedInGame: MessageFromGame? = null
+        var removed = false
 
         deserializedServer.connect(object : ChannelToClient {
+            override fun connected(channelToServer: ChannelToServer) {
+                channelToServer.messageToServer(MessageToServer("TEST"))
+            }
+
             override fun messageToClient(message: MessageToClient) {
                 received = message
             }
-        }) { channelToServer ->
-            channelToServer.messageToServer(MessageToServer("TEST"))
-        }
+
+            override fun addedToGame(channelToServerMembership: ChannelToServerMembership) {
+                channelToServerMembership.messageToGame(MessageToGame("TEST 2"))
+            }
+
+            override fun removedFromGame(channelToServerMembership: ChannelToServerMembership) {
+                removed = true
+            }
+
+            override fun messageFromGame(channelToServerMembership: ChannelToServerMembership, message: MessageFromGame) {
+                receivedInGame = message
+            }
+        })
 
         assertEquals(MessageToClient("TEST"), received)
-    }
-
-    private class EchoServer : Server {
-        override fun connect(channelToClient: ChannelToClient, callback: (channelToServer: ChannelToServer) -> Unit) {
-            callback(object : ChannelToServer {
-                override fun messageToServer(message: MessageToServer) {
-                    channelToClient.messageToClient(MessageToClient(message.message))
-                }
-            })
-        }
+        assertEquals(MessageFromGame("TEST 2"), receivedInGame)
+        assertTrue(removed)
     }
 }
