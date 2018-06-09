@@ -21,5 +21,5 @@ class DynamicSerializer<T : Any>(private vararg val classes: KClass<out T>) : Si
     }
 
     @Serializable
-    private class Dynamic(@SerialName("t") val type: Int, @SerialName("v") val value: String)
+    internal class Dynamic(@SerialName("t") val type: Int, @SerialName("v") val value: String)
 }
