@@ -2,4 +2,4 @@ rootProject.name = 'mp'
 
 include 'mp-common', 'mp-jvm', 'mp-js'
 include 'mp-serialization-common','mp-serialization-jvm', 'mp-serialization-js'
-
+include 'mp-ws-common','mp-ws-jvm', 'mp-ws-js'
