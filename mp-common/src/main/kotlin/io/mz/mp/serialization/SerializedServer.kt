@@ -1,5 +1,5 @@
 package io.mz.mp.serialization
 
 interface SerializedServer {
-    fun connect(channelToClient: SerializedChannelToClient)
+    fun connect(callback: (channel: SerializedChannel) -> Unit)
 }

@@ -7,61 +7,57 @@ class DecoderServer(
         private val encode: (message: ActionToServer) -> String,
         private val decode: (message: String) -> ActionToClient
 ) : Server {
-    override fun connect(channelToClient: ChannelToClient) {
-        server.connect(DecoderChannelToClient(channelToClient))
+    override fun connect(callback: (channel: Channel) -> Unit) {
+        server.connect { channel ->
+            callback(DecoderChannel(channel))
+        }
     }
 
-    private inner class DecoderChannelToClient(
-            private val channelToClient: ChannelToClient
-    ) : SerializedChannelToClient {
-        private lateinit var channelToServer: SerializedChannelToServer;
-        private val gamesById: MutableMap<Int, ChannelToServerMembership> = mutableMapOf()
+    private inner class DecoderChannel(
+            private val channel: SerializedChannel
+    ) : Channel.AbstractChannel() {
+        private val gamesById: MutableMap<Int, GameChannel> = mutableMapOf()
 
-        override fun connected(channelToServer: SerializedChannelToServer) {
-            this.channelToServer = channelToServer;
-            channelToClient.connected(EncoderChannelToServer(channelToServer))
+        init {
+            channel.onMessage = ::msg
         }
 
-        override fun actionToClient(serializedAction: String) {
-            val action = decode(serializedAction)
+        override fun messageToServer(message: MessageToServer) {
+            channel.messageToServer(encode(MessageToServerAction(message)))
+        }
+
+        private fun msg(message: String) {
+            val action = decode(message)
             return when (action) {
-                is MessageToClientAction -> channelToClient.messageToClient(action.message)
+                is MessageToClientAction -> onMessage(action.message)
                 is AddedToGameAction -> {
                     if (gamesById.containsKey(action.id)) {
                         return
                     }
 
-                    val channelToServerMembership = EncoderChannelToServerMembership(channelToServer, action.id)
-                    gamesById[action.id] = channelToServerMembership
-                    channelToClient.addedToGame(channelToServerMembership)
+                    val gameChannel = EncoderGameChannel(channel, action.id)
+                    gamesById[action.id] = gameChannel
+                    onAdd(gameChannel)
                 }
                 is RemovedFromGameAction -> {
-                    val channelToServerMembership = gamesById[action.id] ?: return
+                    val gameChannel = gamesById[action.id] ?: return
                     gamesById.remove(action.id)
-                    channelToClient.removedFromGame(channelToServerMembership)
+                    gameChannel.onRemove()
                 }
                 is MessageFromGameAction -> {
-                    val channelToServerMembership = gamesById[action.id] ?: return
-                    channelToClient.messageFromGame(channelToServerMembership, action.message)
+                    val gameChannel = gamesById[action.id] ?: return
+                    gameChannel.onMessage(action.message)
                 }
             }
         }
     }
 
-    private inner class EncoderChannelToServer(
-            private val channelToServer: SerializedChannelToServer
-    ) : ChannelToServer {
-        override fun messageToServer(message: MessageToServer) {
-            channelToServer.messageToServer(encode(MessageToServerAction(message)))
-        }
-    }
-
-    private inner class EncoderChannelToServerMembership(
-            private val serializedChannelToServer: SerializedChannelToServer,
+    private inner class EncoderGameChannel(
+            private val serializedChannel: SerializedChannel,
             private val id: Int
-    ) : ChannelToServerMembership {
+    ) : GameChannel.AbstractGameChannel() {
         override fun messageToGame(message: MessageToGame) {
-            serializedChannelToServer.messageToServer(encode(MessageToGameAction(id, message)))
+            serializedChannel.messageToServer(encode(MessageToGameAction(id, message)))
         }
     }
 }

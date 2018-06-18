@@ -1,5 +1,5 @@
 package io.mz.mp
 
 interface Server {
-    fun connect(channelToClient: ChannelToClient)
+    fun connect(callback: (channel: Channel) -> Unit)
 }

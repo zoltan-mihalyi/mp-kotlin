@@ -3,17 +3,18 @@ package io.mz.mp.serializationtest
 import io.mz.mp.*
 
 class EchoServer : Server {
-    override fun connect(channelToClient: ChannelToClient) {
-        channelToClient.connected(object : ChannelToServer {
+    override fun connect(callback: (channel: Channel) -> Unit) {
+        val channel = object : Channel.AbstractChannel() {
             override fun messageToServer(message: MessageToServer) {
-                channelToClient.messageToClient(MessageToClient(message.message))
+                onMessage(MessageToClient(message.message))
             }
-        })
+        }
+        callback(channel);
 
-        channelToClient.addedToGame(object : ChannelToServerMembership {
+        channel.onAdd(object : GameChannel.AbstractGameChannel() {
             override fun messageToGame(message: MessageToGame) {
-                channelToClient.messageFromGame(this, MessageFromGame(message.message))
-                channelToClient.removedFromGame(this)
+                onMessage(MessageFromGame(message.message))
+                onRemove()
             }
         })
     }

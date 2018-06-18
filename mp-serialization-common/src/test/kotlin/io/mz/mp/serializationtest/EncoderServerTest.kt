@@ -1,7 +1,10 @@
 package io.mz.mp.serializationtest
 
 import io.mz.mp.*
-import io.mz.mp.serialization.*
+import io.mz.mp.serialization.ActionToServer
+import io.mz.mp.serialization.EncoderServer
+import io.mz.mp.serialization.JSON
+import io.mz.mp.serialization.MessageToGameAction
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -15,85 +18,81 @@ class EncoderServerTest {
         val encoded = EncoderServer(server, JSON::stringify, JSON::parse)
 
         var finishedWithoutException = false
-        encoded.connect(object : SerializedChannelToClient {
-            override fun connected(channelToServer: SerializedChannelToServer) {
-                val message = MessageToGameAction(42, MessageToGame("!!!"))
-                channelToServer.messageToServer(JSON.stringify<ActionToServer>(message))
-                finishedWithoutException = true
-            }
-
-            override fun actionToClient(serializedAction: String) {
-            }
-        })
+        encoded.connect { channel ->
+            val message = MessageToGameAction(42, MessageToGame("!!!"))
+            channel.messageToServer(JSON.stringify<ActionToServer>(message))
+            finishedWithoutException = true
+        }
 
         assertTrue(finishedWithoutException)
     }
 
     @Test
     fun removedTwice() {
-        val server = EvilServer { channelToClient, game ->
-            channelToClient.removedFromGame(game)
-            channelToClient.removedFromGame(game)
+        val server = EvilServer { channel, game ->
+            channel.onAdd(game)
+            game.onRemove()
+            game.onRemove()
         }
 
         val encoded = EncoderServer(server, JSON::stringify, JSON::parse)
 
-        encoded.connect(object : SerializedChannelToClient {
-            override fun connected(channelToServer: SerializedChannelToServer) {
-            }
+        var messages = 0;
 
-            override fun actionToClient(serializedAction: String) {
+        encoded.connect { channel ->
+            channel.onMessage = {
+                messages++;
             }
-        })
+        }
+        assertEquals(2, messages) // add + remove = 2
     }
 
     @Test
     fun addedTwice() {
-        val server = EvilServer { channelToClient, game ->
-            channelToClient.addedToGame(game)
-            channelToClient.addedToGame(game)
+        val server = EvilServer { channel, game ->
+            channel.onAdd(game)
+            channel.onAdd(game)
         }
 
         val encoded = EncoderServer(server, JSON::stringify, JSON::parse)
 
         var actions = 0;
 
-        encoded.connect(object : SerializedChannelToClient {
-            override fun connected(channelToServer: SerializedChannelToServer) {
-            }
-
-            override fun actionToClient(serializedAction: String) {
+        encoded.connect { channel ->
+            channel.onMessage = {
                 actions++
             }
-        })
+        }
 
         assertEquals(1, actions)
     }
 
     @Test
     fun messageFromNonExistent() {
-        val server = EvilServer { channelToClient, game ->
-            channelToClient.messageFromGame(game, MessageFromGame("You are not added to this game!"))
+        val server = EvilServer { channel, game ->
+            game.onMessage(MessageFromGame("You are not added to this game!"))
         }
 
         val encoded = EncoderServer(server, JSON::stringify, JSON::parse)
 
-        encoded.connect(object : SerializedChannelToClient {
-            override fun connected(channelToServer: SerializedChannelToServer) {
-            }
-
-            override fun actionToClient(serializedAction: String) {
-            }
-        })
+        encoded.connect {}
     }
 
-    private class EvilServer(private val onConnect: (channelToClient: ChannelToClient, game: ChannelToServerMembership) -> Unit) : Server {
-        override fun connect(channelToClient: ChannelToClient) {
-            val game = object : ChannelToServerMembership {
+    private class EvilServer(
+            private val handleGame: (channel: Channel, game: GameChannel) -> Unit
+    ) : Server {
+        override fun connect(callback: (channel: Channel) -> Unit) {
+            val channel = object : Channel.AbstractChannel() {
+                override fun messageToServer(message: MessageToServer) {
+                }
+            }
+            callback(channel)
+            val game = object : GameChannel.AbstractGameChannel() {
                 override fun messageToGame(message: MessageToGame) {
                 }
             }
-            onConnect(channelToClient, game)
+
+            handleGame(channel, game)
         }
 
     }

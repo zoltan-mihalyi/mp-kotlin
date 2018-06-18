@@ -21,27 +21,23 @@ class SerializedServerTest {
         var receivedInGame: MessageFromGame? = null
         var removed = false
 
-        deserializedServer.connect(object : ChannelToClient {
-            override fun connected(channelToServer: ChannelToServer) {
-                channelToServer.messageToServer(MessageToServer("TEST"))
-            }
-
-            override fun messageToClient(message: MessageToClient) {
+        deserializedServer.connect { channel ->
+            channel.onMessage = {message->
                 received = message
             }
 
-            override fun addedToGame(channelToServerMembership: ChannelToServerMembership) {
-                channelToServerMembership.messageToGame(MessageToGame("TEST 2"))
+            channel.onAdd = {gameChannel ->
+                gameChannel.onMessage = {message ->
+                    receivedInGame = message
+                }
+                gameChannel.onRemove={
+                    removed = true;
+                }
+                gameChannel.messageToGame(MessageToGame("TEST 2"))
             }
 
-            override fun removedFromGame(channelToServerMembership: ChannelToServerMembership) {
-                removed = true
-            }
-
-            override fun messageFromGame(channelToServerMembership: ChannelToServerMembership, message: MessageFromGame) {
-                receivedInGame = message
-            }
-        })
+            channel.messageToServer(MessageToServer("TEST"))
+        }
 
         assertEquals(MessageToClient("TEST"), received)
         assertEquals(MessageFromGame("TEST 2"), receivedInGame)
