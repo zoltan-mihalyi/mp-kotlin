@@ -44,7 +44,7 @@ class EncoderServerTest {
                 messages++;
             }
         }
-        assertEquals(2, messages) // add + remove = 2
+        assertEquals(3, messages) // connected + add + remove = 3
     }
 
     @Test
@@ -64,7 +64,7 @@ class EncoderServerTest {
             }
         }
 
-        assertEquals(1, actions)
+        assertEquals(2, actions) // connected + add = 2
     }
 
     @Test

@@ -10,6 +10,8 @@ class DecoderServerTest {
     @Test
     fun addedTwice() {
         val server = EvilSerializedServer { channel ->
+            channel.onMessage(JSON.stringify<ActionToClient>(ConnectedAction.INSTANCE))
+
             val added = JSON.stringify<ActionToClient>(AddedToGameAction(1))
             channel.onMessage(added)
             channel.onMessage(added)

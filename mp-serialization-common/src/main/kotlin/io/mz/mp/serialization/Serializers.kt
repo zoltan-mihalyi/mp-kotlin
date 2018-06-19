@@ -33,6 +33,7 @@ fun SerialContext.registerMpSerializers(): SerialContext {
     registerSerializer(stringValueSerializer(::MessageFromGame, MessageFromGame::message, "MessageFromGame"))
     registerSerializer(DynamicSerializer(MessageToServerAction::class, MessageToGameAction::class))
     registerSerializer(DynamicSerializer(
+            ConnectedAction::class,
             MessageToClientAction::class,
             AddedToGameAction::class,
             RemovedFromGameAction::class,

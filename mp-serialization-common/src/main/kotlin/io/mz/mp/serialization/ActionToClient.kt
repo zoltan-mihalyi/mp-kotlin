@@ -5,7 +5,13 @@ import io.mz.mp.MessageToClient
 import kotlinx.serialization.Serializable
 
 
-sealed class ActionToClient {
+sealed class ActionToClient
+
+@Serializable
+class ConnectedAction private constructor(): ActionToClient(){
+    companion object {
+        val INSTANCE = ConnectedAction()
+    }
 }
 
 @Serializable

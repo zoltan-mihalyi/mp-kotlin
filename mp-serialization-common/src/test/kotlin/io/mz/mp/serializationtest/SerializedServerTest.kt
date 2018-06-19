@@ -2,9 +2,7 @@ package io.mz.mp.serializationtest
 
 import io.mz.mp.*
 import io.mz.mp.serialization.*
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 
 class SerializedServerTest {
@@ -22,15 +20,15 @@ class SerializedServerTest {
         var removed = false
 
         deserializedServer.connect { channel ->
-            channel.onMessage = {message->
+            channel.onMessage = { message ->
                 received = message
             }
 
-            channel.onAdd = {gameChannel ->
-                gameChannel.onMessage = {message ->
+            channel.onAdd = { gameChannel ->
+                gameChannel.onMessage = { message ->
                     receivedInGame = message
                 }
-                gameChannel.onRemove={
+                gameChannel.onRemove = {
                     removed = true;
                 }
                 gameChannel.messageToGame(MessageToGame("TEST 2"))
@@ -42,5 +40,44 @@ class SerializedServerTest {
         assertEquals(MessageToClient("TEST"), received)
         assertEquals(MessageFromGame("TEST 2"), receivedInGame)
         assertTrue(removed)
+    }
+
+    @Test
+    fun noAccept() {
+        val server = NoAccept()
+
+        val serializedServer = EncoderServer(server, JSON::stringify, JSON::parse)
+
+        val transport = FakeTransport(serializedServer)
+
+        val deserializedServer = DecoderServer(transport, JSON::stringify, JSON::parse)
+
+        deserializedServer.connect {
+            fail("Should not connect")
+        }
+    }
+
+    class NoAccept : Server {
+        override fun connect(callback: (channel: Channel) -> Unit) {
+            //No callback called
+        }
+    }
+
+    class FakeTransport(private val server: SerializedServer) : SerializedServer {
+        override fun connect(callback: (channel: SerializedChannel) -> Unit) {
+            var forwardMessage: (String) -> Unit = {}
+
+            server.connect { remoteChannel ->
+                forwardMessage = remoteChannel::messageToServer
+            }
+
+            val channel = object : SerializedChannel.AbstractSerializedChannel() {
+                override fun messageToServer(message: String) {
+                    forwardMessage(message)
+                }
+            }
+
+            callback(channel)
+        }
     }
 }

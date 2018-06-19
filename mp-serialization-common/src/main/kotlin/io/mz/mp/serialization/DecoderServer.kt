@@ -9,12 +9,13 @@ class DecoderServer(
 ) : Server {
     override fun connect(callback: (channel: Channel) -> Unit) {
         server.connect { channel ->
-            callback(DecoderChannel(channel))
+            DecoderChannel(channel, callback)
         }
     }
 
     private inner class DecoderChannel(
-            private val channel: SerializedChannel
+            private val channel: SerializedChannel,
+            private val callback: (channel: Channel) -> Unit
     ) : Channel.AbstractChannel() {
         private val gamesById: MutableMap<Int, GameChannel> = mutableMapOf()
 
@@ -29,6 +30,7 @@ class DecoderServer(
         private fun msg(message: String) {
             val action = decode(message)
             return when (action) {
+                is  ConnectedAction -> callback(this)
                 is MessageToClientAction -> onMessage(action.message)
                 is AddedToGameAction -> {
                     if (gamesById.containsKey(action.id)) {

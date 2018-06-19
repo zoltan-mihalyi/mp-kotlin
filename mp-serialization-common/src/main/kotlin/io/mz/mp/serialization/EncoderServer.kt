@@ -11,7 +11,9 @@ class EncoderServer(
 ) : SerializedServer {
     override fun connect(callback: (channel: SerializedChannel) -> Unit) {
         server.connect { channel ->
-            callback(EncoderChannel(channel))
+            val encoderChannel = EncoderChannel(channel)
+            callback(encoderChannel)
+            encoderChannel.onMessage(encode(ConnectedAction.INSTANCE))
         }
     }
 
